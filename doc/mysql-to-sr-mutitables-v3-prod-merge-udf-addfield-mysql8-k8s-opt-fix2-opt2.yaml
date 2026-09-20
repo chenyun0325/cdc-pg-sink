@@ -1,0 +1,181 @@
+source:
+   type: mysql
+   name: MySQL Source
+   hostname: blueoceanmysql.c8vm80u2ecy4.us-east-1.rds.amazonaws.com
+   port: 3306
+   username: SServer
+   password: ^&(A402s
+   tables: StoreServer.mem_customer_tracking,StoreServer.mem_ups_capital, StoreServer.sys_warehouse_outbound_[0-9]+ , StoreServer.sys_warehouse_outbound_[0-9]+_history,StoreServer.sys_warehouse_outbound_info_[0-9]+, StoreServer.sys_warehouse_outbound_product_[0-9]+, StoreServer.sys_warehouse_outbound_product_[0-9]+_history, StoreServer.sys_warehouse_outbound_product_bo_sn_[0-9]+, StoreServer.sys_warehouse_outbound_product_location_[0-9]+, StoreServer.sys_warehouse_outbound_product_location_[0-9]+_history, StoreServer.sys_warehouse_outbound_review_[0-9]+, StoreServer.sys_warehouse_outbound_sn_record_[0-9]+, StoreServer.sys_warehouse_outbound_sn_record_[0-9]+_history, StoreServer.sys_warehouse_outbound_tracking_[0-9]+, StoreServer.sys_warehouse_outbound_upload_file_record_[0-9]+, StoreServer.sys_warehouse_outbound_upload_file_record_[0-9]+_history, StoreServer.sys_warehouse_outbound_ticket_[0-9]+, StoreServer.sys_warehouse_outbound_ticket_[0-9]+_history, StoreServer.sys_warehouse_outbound_ticket_product_location_[0-9]+, StoreServer.sys_warehouse_outbound_toter_[0-9]+, StoreServer.sys_warehouse_outbound_toter_log_[0-9]+, StoreServer.sys_warehouse_outbound_discount_bill_[0-9]+, StoreServer.sys_warehouse_outbound_first_bill_[0-9]+, StoreServer.sys_warehouse_outbound_first_bill_[0-9]+_history, StoreServer.sys_warehouse_outbound_lable_bill_[0-9]+, StoreServer.sys_warehouse_outbound_lable_bill_[0-9]+_history, StoreServer.sys_warehouse_outbound_material_bill_[0-9]+, StoreServer.sys_warehouse_outbound_material_bill_[0-9]+_history, StoreServer.sys_warehouse_outbound_package_bill_[0-9]+, StoreServer.sys_warehouse_outbound_package_bill_[0-9]+_history, StoreServer.sys_warehouse_outbound_postage_bill_[0-9]+, StoreServer.sys_warehouse_outbound_postage_bill_[0-9]+_history, StoreServer.sys_warehouse_outbound_record_sn_bill_[0-9]+, StoreServer.sys_warehouse_outbound_record_sn_bill_[0-9]+_history, StoreServer.sys_warehouse_outbound_reward_for_trade_bill_[0-9]+, StoreServer.sys_warehouse_outbound_tracking_lable_bill_[0-9]+, StoreServer.thd_warehouse_outbound, StoreServer.thd_warehouse_outbound_product, StoreServer.thd_warehouse_outbound_info, StoreServer.thd_warehouse_outbound_product_bo_sn, StoreServer.thd_warehouse_outbound_product_location, StoreServer.thd_warehouse_outbound_sn_record, StoreServer.thd_warehouse_outbound_tracking, StoreServer.thd_warehouse_outbound_upload_file_record, StoreServer.thd_warehouse_outbound_discount_bill, StoreServer.thd_warehouse_outbound_first_bill, StoreServer.thd_warehouse_outbound_lable_bill, StoreServer.thd_warehouse_outbound_material_bill, StoreServer.thd_warehouse_outbound_package_bill, StoreServer.thd_warehouse_outbound_postage_bill, StoreServer.thd_warehouse_outbound_record_sn_bill, StoreServer.mem_supplier_warehouse_outbound, StoreServer.mem_supplier_warehouse_outbound_product, StoreServer.mem_supplier_warehouse_outbound_info, StoreServer.mem_supplier_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record_history, StoreServer.mem_supplier_warehouse_outbound_tracking, StoreServer.mem_supplier_warehouse_outbound_upload_file_record
+   server-id: 59005-59019
+   scan.snapshot.fetch.size: 20000
+   scan.incremental.snapshot.chunk.size: 50000
+   connection.pool.size: 20
+  #scan.binlog.newly-added-table.enabled: true
+   scan.incremental.close-idle-reader.enabled: true
+sink:
+   type: starrocks
+   jdbc-url: jdbc:mysql://kube-starrocks-fe-service.starrocks:9030
+   load-url: kube-starrocks-fe-service.starrocks:8030
+   username: root
+   password: ""
+   table.create.properties.light_schema_change: true
+   table.create.properties.replication_num: 3
+   sink.io.thread-count: 6
+
+route:
+  - source-table: StoreServer.sys_warehouse_outbound_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound,StoreServer.mem_supplier_warehouse_outbound
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_info_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_info,StoreServer.mem_supplier_warehouse_outbound_info
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_info_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_product_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_product,StoreServer.mem_supplier_warehouse_outbound_product
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_product_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_product_bo_sn_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_product_bo_sn
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_product_bo_sn_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_product_location_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_product_location
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_product_location_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_review_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_review
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_review
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_sn_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record_history
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_sn_record_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_tracking_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_tracking,StoreServer.mem_supplier_warehouse_outbound_tracking
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_tracking_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_upload_file_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_upload_file_record,StoreServer.mem_supplier_warehouse_outbound_upload_file_record
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_upload_file_record_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_ticket_([0-9]+|[0-9]+_history)
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_ticket
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_ticket_product_location_([0-9]+|[0-9]+_history)
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_ticket_product_location
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_toter_([0-9]+|[0-9]+_history)
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_toter
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_toter_log_([0-9]+|[0-9]+_history)
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_toter_log
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_discount_bill_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_discount_bill
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_discount_bill_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_first_bill_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_first_bill
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_first_bill_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_lable_bill_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_lable_bill
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_lable_bill_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_material_bill_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_material_bill
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_material_bill_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_package_bill_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_package_bill
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_package_bill_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_postage_bill_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_postage_bill,StoreServer.mem_supplier_warehouse_outbound_postage_bill
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_postage_bill_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_record_sn_bill_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_record_sn_bill
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_record_sn_bill_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_reward_for_trade_bill_([0-9]+|[0-9]+_history)
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_reward_for_trade_bill
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_tracking_lable_bill_([0-9]+|[0-9]+_history)
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_tracking_lable_bill
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.^(?!\.*(_[0-9]+|_[0-9]+_history)$)\.*$
+    sink-table: StoreServerHaV2.<>
+    replace-symbol: <>
+    description: 正则匹配
+
+transform:
+  - source-table: StoreServer.mem_customer_tracking
+    projection: "*, json(param,'outbound_id') as outbound_id"
+  - source-table: StoreServer.sys_warehouse_outbound_([0-9]+|[0-9]+_history)
+    projection: "*, 1 as wh_type , __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.mem_supplier_warehouse_outbound
+    projection: "*, 2 as wh_type , __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.thd_warehouse_outbound
+    projection: "*, 3 as wh_type , __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_sn_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record_history
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_upload_file_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_upload_file_record,StoreServer.mem_supplier_warehouse_outbound_upload_file_record
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_info_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_info,StoreServer.mem_supplier_warehouse_outbound_info
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_product_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_product,StoreServer.mem_supplier_warehouse_outbound_product
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id,upc
+  - source-table: StoreServer.sys_warehouse_outbound_product_bo_sn_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_product_bo_sn
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id,upc,bo_sn
+  - source-table: StoreServer.sys_warehouse_outbound_product_location_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_product_location
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id,upc,location_id
+  - source-table: StoreServer.sys_warehouse_outbound_review_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_review
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_tracking_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_tracking,StoreServer.mem_supplier_warehouse_outbound_tracking
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id,tracking_number,delete
+  - source-table: StoreServer.sys_warehouse_outbound_ticket_[0-9]+(?:_history)?
+    projection: "*, __table_name__ || '_' || outbound_ticket_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_ticket_product_location_[0-9]+(?:_history)?
+    projection: "*, __table_name__ || '_' || outbound_ticket_id _pk_id"
+    primary-keys: _pk_id,upc,location_id
+  - source-table: StoreServer.sys_warehouse_outbound_toter_[0-9]+(?:_history)?
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_toter_log_[0-9]+(?:_history)?
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_discount_bill_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_discount_bill
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_first_bill_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_first_bill
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_lable_bill_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_lable_bill
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_material_bill_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_material_bill
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_package_bill_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_package_bill,StoreServer.mem_supplier_warehouse_outbound_postage_bill
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_postage_bill_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_postage_bill
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_record_sn_bill_[0-9]+(?:_history)?,StoreServer.thd_warehouse_outbound_record_sn_bill
+    projection: "*, __table_name__ || '_' || outbound_id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_reward_for_trade_bill_[0-9]+(?:_history)?
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+
+pipeline:
+  name: mysql_m2_woutbound_Prod_mergeAdd_udf_addfield_sr_mysql8-k8s-memoryoptHa-fix2
+  parallelism: 8
+  schema.change.behavior: TRY_EVOLVE
+  schema-operator.rpc-timeout: 20min
+  user-defined-function:
+   - name: inc
+     classpath: org.apache.flink.cdc.udf.examples.java.AddOneFunctionClass
+   - name: json
+     classpath: org.apache.flink.cdc.udf.examples.java.JsonFunctionClass
+   - name: format
+     classpath: org.apache.flink.cdc.udf.examples.java.FormatFunctionClass

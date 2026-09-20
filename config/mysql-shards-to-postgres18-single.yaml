@@ -1,0 +1,107 @@
+# Flink CDC 3.5: production MySQL -> PostgreSQL 18, merged normal tables.
+# Covers every physical table listed in doc/aws emr 事项.png.
+source:
+  type: mysql
+  name: StoreServer-Production-Source
+  hostname: blueoceanmysql.c8vm80u2ecy4.us-east-1.rds.amazonaws.com
+  port: 3306
+  username: SServer
+  password: '^&(A402s'
+  tables: 'StoreServer.mem_customer_amaz_order,StoreServer.mem_customer_amaz_order_[0-9]+,StoreServer.mem_customer_amaz_order_history,StoreServer.mem_customer_amaz_order_item,StoreServer.mem_customer_amaz_order_item_[0-9]+,StoreServer.mem_customer_amaz_order_item_gift,StoreServer.mem_customer_product,StoreServer.sys_product,StoreServer.mem_customer_product_upc_code,StoreServer.mem_ups_capital,StoreServer.mem_customer_tracking,StoreServer.sys_warehouse_outbound_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound,StoreServer.mem_supplier_warehouse_outbound,StoreServer.sys_warehouse_outbound_tracking_[0-9]+,StoreServer.thd_warehouse_outbound_tracking,StoreServer.mem_supplier_warehouse_outbound_tracking,StoreServer.sys_warehouse_outbound_sn_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record_history,StoreServer.sys_warehouse_outbound_product_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_product,StoreServer.mem_supplier_warehouse_outbound_product,StoreServer.sys_warehouse_outbound_product_bo_sn_[0-9]+,StoreServer.thd_warehouse_outbound_product_bo_sn,StoreServer.sys_warehouse_outbound_upload_file_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_upload_file_record,StoreServer.mem_supplier_warehouse_outbound_upload_file_record'
+  server-id: 6000-6099
+  server-time-zone: Asia/Shanghai
+  connection.pool.size: 20
+  scan.startup.mode: initial
+  scan.incremental.snapshot.enabled: true
+  scan.incremental.snapshot.chunk.size: 50000
+  scan.snapshot.fetch.size: 20000
+  scan.incremental.close-idle-reader.enabled: true
+  scan.newly-added-table.enabled: true
+  schema-change.enabled: true
+
+sink:
+  type: postgres
+  name: PostgreSQL18-Normal-Table-Sink
+  hostname: postgres
+  port: 5432
+  database-name: testdb
+  username: testuser
+  password: 'TestPassword123'
+  create-schema.enabled: true
+  default-schema: public
+  server-time-zone: Asia/Shanghai
+  sink.buffer-flush.max-rows: 2000
+  sink.buffer-flush.interval: 2s
+  sink.max-retries: 3
+  statement-cache.max-size: 256
+  dangerous-ddl.enabled: false
+  no-primary-key.action: fail
+
+route:
+  - source-table: 'StoreServer.mem_customer_amaz_order,StoreServer.mem_customer_amaz_order_[0-9]+,StoreServer.mem_customer_amaz_order_history'
+    sink-table: StoreServerHaV2.mem_customer_amaz_order_m
+  - source-table: 'StoreServer.mem_customer_amaz_order_item,StoreServer.mem_customer_amaz_order_item_[0-9]+'
+    sink-table: StoreServerHaV2.mem_customer_amaz_order_item_m
+  - source-table: StoreServer.mem_customer_amaz_order_item_gift
+    sink-table: StoreServerHaV2.mem_customer_amaz_order_item_gift
+  - source-table: StoreServer.mem_customer_product
+    sink-table: StoreServerHaV2.mem_customer_product
+  - source-table: StoreServer.sys_product
+    sink-table: StoreServerHaV2.sys_product
+  - source-table: StoreServer.mem_customer_product_upc_code
+    sink-table: StoreServerHaV2.mem_customer_product_upc_code
+  - source-table: StoreServer.mem_ups_capital
+    sink-table: StoreServerHaV2.mem_ups_capital
+  - source-table: StoreServer.mem_customer_tracking
+    sink-table: StoreServerHaV2.mem_customer_tracking
+  - source-table: 'StoreServer.sys_warehouse_outbound_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound,StoreServer.mem_supplier_warehouse_outbound'
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_m
+  - source-table: 'StoreServer.sys_warehouse_outbound_tracking_[0-9]+,StoreServer.thd_warehouse_outbound_tracking,StoreServer.mem_supplier_warehouse_outbound_tracking'
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_tracking_m
+  - source-table: 'StoreServer.sys_warehouse_outbound_sn_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record_history'
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_sn_record_m
+  - source-table: 'StoreServer.sys_warehouse_outbound_product_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_product,StoreServer.mem_supplier_warehouse_outbound_product'
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_product_m
+  - source-table: 'StoreServer.sys_warehouse_outbound_product_bo_sn_[0-9]+,StoreServer.thd_warehouse_outbound_product_bo_sn'
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_product_bo_sn_m
+  - source-table: 'StoreServer.sys_warehouse_outbound_upload_file_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_upload_file_record,StoreServer.mem_supplier_warehouse_outbound_upload_file_record'
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_upload_file_record_m
+
+transform:
+  - source-table: 'StoreServer.mem_customer_amaz_order,StoreServer.mem_customer_amaz_order_[0-9]+,StoreServer.mem_customer_amaz_order_history'
+    projection: "*, __table_name__ || '_' || id AS _pk_id"
+    primary-keys: _pk_id
+  - source-table: 'StoreServer.mem_customer_amaz_order_item,StoreServer.mem_customer_amaz_order_item_[0-9]+'
+    projection: "*, __table_name__ || '_' || id AS _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_([0-9]+|[0-9]+_history)
+    projection: "*, 1 AS wh_type, __table_name__ || '_' || outbound_id AS _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.mem_supplier_warehouse_outbound
+    projection: "*, 2 AS wh_type, __table_name__ || '_' || outbound_id AS _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.thd_warehouse_outbound
+    projection: "*, 3 AS wh_type, __table_name__ || '_' || outbound_id AS _pk_id"
+    primary-keys: _pk_id
+  - source-table: 'StoreServer.sys_warehouse_outbound_tracking_[0-9]+,StoreServer.thd_warehouse_outbound_tracking,StoreServer.mem_supplier_warehouse_outbound_tracking'
+    projection: "*, __table_name__ || '_' || outbound_id AS _pk_id"
+    primary-keys: _pk_id,tracking_number,delete
+  - source-table: 'StoreServer.sys_warehouse_outbound_sn_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record_history'
+    projection: "*, __table_name__ || '_' || id AS _pk_id"
+    primary-keys: _pk_id
+  - source-table: 'StoreServer.sys_warehouse_outbound_product_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_product,StoreServer.mem_supplier_warehouse_outbound_product'
+    projection: "*, __table_name__ || '_' || outbound_id AS _pk_id"
+    primary-keys: _pk_id,upc
+  - source-table: 'StoreServer.sys_warehouse_outbound_product_bo_sn_[0-9]+,StoreServer.thd_warehouse_outbound_product_bo_sn'
+    projection: "*, __table_name__ || '_' || outbound_id AS _pk_id"
+    primary-keys: _pk_id,upc,bo_sn
+  - source-table: 'StoreServer.sys_warehouse_outbound_upload_file_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_upload_file_record,StoreServer.mem_supplier_warehouse_outbound_upload_file_record'
+    projection: "*, __table_name__ || '_' || id AS _pk_id"
+    primary-keys: _pk_id
+
+pipeline:
+  name: StoreServer-MySQL-To-PostgreSQL18-Normal-Tables
+  parallelism: 8
+  local-time-zone: Asia/Shanghai
+  schema.change.behavior: TRY_EVOLVE
+  schema-operator.rpc-timeout: 20min

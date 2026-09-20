@@ -1,0 +1,104 @@
+source:
+   type: mysql
+   name: MySQL Source
+   hostname: blueoceanmysql.c8vm80u2ecy4.us-east-1.rds.amazonaws.com
+   port: 3306
+   username: SServer
+   password: ^&(A402s
+   tables: StoreServer.mem_customer_ship_station_order,StoreServer.mem_customer_ship_station_order_item,StoreServer.mem_customer_ship_station_order_item_gift,StoreServer.mem_customer_ship_station_shop, StoreServer.mem_customer_amaz_order_history,StoreServer.mem_customer_walmart_order,StoreServer.mem_customer_walmart_order_item,StoreServer.mem_customer_amaz_order_[0-9]+,StoreServer.mem_customer_amaz_order,StoreServer.mem_customer_amaz_order_item,StoreServer.mem_customer_amaz_order_item_[0-9]+,StoreServer.mem_supplier_warehouse,StoreServer.mem_customer_amaz_order_item_gift,StoreServer.mem_customer_amaz_order_item_gift_bosn,StoreServer.mem_customer_amaz_order_item_bosn,StoreServer.mem_customer_amaz_shop,StoreServer.mem_customer_walmart_shop,StoreServer.mem_customer_walmart_order_[0-9]+,StoreServer.mem_customer_walmart_order_item_[0-9]+,StoreServer.mem_customer_walmart_order_item_gift,StoreServer.mem_customer_walmart_order_item_gift_bosn,StoreServer.mem_customer_walmart_order_item_bosn,StoreServer.sys_warehouse_outbound,StoreServer.mem_customer_data,StoreServer.sys_warehouse_outbound_product,StoreServer.sys_warehouse_outbound_upload_file_record,StoreServer.mem_supplier_warehouse_outbound_photo_record,StoreServer.mem_supplier_warehouse_outbound_photo_record_history,StoreServer.sys_warehouse_outbound_photo_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_photo_record,StoreServer.sys_warehouse_outbound_sn_record,StoreServer.sys_warehouse_outbound_sn_record_history,StoreServer.mem_customer_value_added_thd,StoreServer.mem_customer_value_added_thd_[0-9]+,StoreServer.mem_customer_value_added,StoreServer.mem_customer_value_added_[0-9]+,StoreServer.mem_customer_value_added_assemble,StoreServer.mem_customer_value_added_assemble_[0-9]+,StoreServer.mem_customer_value_added_assemble_thd,StoreServer.mem_customer_value_added_assemble_thd_[0-9]+,StoreServer.sys_warehouse_inventory_location_bo_sn_[0-9]+,StoreServer.thd_warehouse_inventory_location_bo_sn
+   server-id: 77600-77619
+   connection.pool.size: 20
+   scan.snapshot.fetch.size: 20000
+   scan.incremental.snapshot.chunk.size: 50000
+   scan.incremental.close-idle-reader.enabled: true
+   scan.newly-added-table.enabled: true
+   #scan.binlog.newly-added-table.enabled: true
+
+sink:
+   type: starrocks
+   jdbc-url: jdbc:mysql://kube-starrocks-fe-service.starrocks:9030
+   load-url: kube-starrocks-fe-service.starrocks:8030
+   username: root
+   password: ""
+   table.create.properties.light_schema_change: true
+   table.create.properties.replication_num: 3
+
+route:
+  - source-table: StoreServer.mem_customer_amaz_order_[0-9]+,StoreServer.mem_customer_amaz_order,StoreServer.mem_customer_amaz_order_history
+    sink-table: StoreServerHaV2.mem_customer_amaz_order_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.mem_customer_amaz_order_item_[0-9]+,StoreServer.mem_customer_amaz_order_item
+    sink-table: StoreServerHaV2.mem_customer_amaz_order_item_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.mem_customer_walmart_order_[0-9]+,StoreServer.mem_customer_walmart_order
+    sink-table: StoreServerHaV2.mem_customer_walmart_order_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.mem_customer_walmart_order_item_[0-9]+,StoreServer.mem_customer_walmart_order_item
+    sink-table: StoreServerHaV2.mem_customer_walmart_order_item_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.mem_supplier_warehouse_outbound_photo_record_history,StoreServer.mem_supplier_warehouse_outbound_photo_record
+    sink-table: StoreServerHaV2.mem_supplier_warehouse_outbound_photo_record_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_photo_record_([0-9]+|[0-9]+_history)
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_photo_record_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_outbound_sn_record_history,StoreServer.sys_warehouse_outbound_sn_record
+    sink-table: StoreServerHaV2.sys_warehouse_outbound_sn_record_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.mem_customer_value_added_[0-9]+,StoreServer.mem_customer_value_added,StoreServer.mem_customer_value_added_thd_[0-9]+,StoreServer.mem_customer_value_added_thd
+    sink-table: StoreServerHaV2.mem_customer_value_added_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.mem_customer_value_added_assemble_[0-9]+,StoreServer.mem_customer_value_added_assemble,StoreServer.mem_customer_value_added_assemble_thd_[0-9]+,StoreServer.mem_customer_value_added_assemble_thd
+    sink-table: StoreServerHaV2.mem_customer_value_added_assemble_m
+    description: sync sharding tables to one destination table
+  - source-table: StoreServer.sys_warehouse_inventory_location_bo_sn_[0-9]+,StoreServer.sys_warehouse_inventory_location_bo_sn
+    sink-table: StoreServerHaV2.sys_warehouse_inventory_location_bo_sn_m
+    description: sync sharding tables to one destination table 
+  - source-table: StoreServer.^(?!\.*(_[0-9]+|_[0-9]+_history)$)\.*$
+    sink-table: StoreServerHaV2.<>
+    replace-symbol: <>
+    description: 正则匹配
+
+transform:
+  - source-table: StoreServer.mem_customer_amaz_order_[0-9]+,StoreServer.mem_customer_amaz_order,StoreServer.mem_customer_amaz_order_history
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.mem_customer_amaz_order_item_[0-9]+,StoreServer.mem_customer_amaz_order_item
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.mem_customer_walmart_order_[0-9]+,StoreServer.mem_customer_walmart_order
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.mem_customer_walmart_order_item_[0-9]+,StoreServer.mem_customer_walmart_order_item
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.mem_supplier_warehouse_outbound_photo_record_history,StoreServer.mem_supplier_warehouse_outbound_photo_record
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_photo_record_([0-9]+|[0-9]+_history)
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_outbound_sn_record_history,StoreServer.sys_warehouse_outbound_sn_record
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.mem_customer_value_added_[0-9]+,StoreServer.mem_customer_value_added,StoreServer.mem_customer_value_added_thd_[0-9]+,StoreServer.mem_customer_value_added_thd
+    projection: "*, __table_name__ || '_' || vid _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.mem_customer_value_added_assemble_[0-9]+,StoreServer.mem_customer_value_added_assemble,StoreServer.mem_customer_value_added_assemble_thd_[0-9]+,StoreServer.mem_customer_value_added_assemble_thd
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id
+  - source-table: StoreServer.sys_warehouse_inventory_location_bo_sn_[0-9]+,StoreServer.sys_warehouse_inventory_location_bo_sn
+    projection: "*, __table_name__ || '_' || id _pk_id"
+    primary-keys: _pk_id    
+pipeline:
+  name: mysql_m2_order_Prod_mergeAdd_udf_addfield_sr_opt-k8s_prodtest_memoryoptHa-fix2
+  parallelism: 4
+  schema.change.behavior: TRY_EVOLVE
+  schema-operator.rpc-timeout: 20min
+  user-defined-function:
+   - name: inc
+     classpath: org.apache.flink.cdc.udf.examples.java.AddOneFunctionClass
+   - name: json
+     classpath: org.apache.flink.cdc.udf.examples.java.JsonFunctionClass
+   - name: format
+     classpath: org.apache.flink.cdc.udf.examples.java.FormatFunctionClass
