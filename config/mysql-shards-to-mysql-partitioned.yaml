@@ -4,11 +4,9 @@
 # IMPORTANT:
 # 1. Apache Flink CDC 3.5 does not ship an official MySQL Pipeline Sink. Install
 #    the custom "mysql" sink used by your runtime before submitting this job.
-# 2. The target table must be created as a MySQL partitioned table before the job
-#    starts. Its columns are the source columns plus `_pk_id VARCHAR(...) NOT NULL`,
-#    its PRIMARY KEY is (`_pk_id`), and the recommended clause is:
-#      PARTITION BY KEY (`_pk_id`) PARTITIONS 16
-#    Pipeline YAML cannot turn an existing normal MySQL table into a partitioned one.
+# 2. The custom Sink automatically creates merged tables with
+#    PARTITION BY KEY (`_pk_id`) PARTITIONS 16. An existing normal table cannot be
+#    converted by CREATE TABLE IF NOT EXISTS; migrate or rebuild it before first use.
 
 source:
   type: mysql
@@ -17,6 +15,8 @@ source:
   port: 3306
   username: flink_cdc
   password: '^&(A402s'
+  partition.default-strategy: key
+  partition.default-count: 16
   tables: 'StoreServer.mem_customer_amaz_order,StoreServer.mem_customer_amaz_order_[0-9]+,StoreServer.mem_customer_amaz_order_history,StoreServer.mem_customer_amaz_order_item,StoreServer.mem_customer_amaz_order_item_[0-9]+,StoreServer.mem_customer_amaz_order_item_gift,StoreServer.mem_customer_product,StoreServer.sys_product,StoreServer.mem_customer_product_upc_code,StoreServer.mem_ups_capital,StoreServer.mem_customer_tracking,StoreServer.sys_warehouse_outbound_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound,StoreServer.mem_supplier_warehouse_outbound,StoreServer.sys_warehouse_outbound_tracking_[0-9]+,StoreServer.thd_warehouse_outbound_tracking,StoreServer.mem_supplier_warehouse_outbound_tracking,StoreServer.sys_warehouse_outbound_sn_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record_history,StoreServer.sys_warehouse_outbound_product_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_product,StoreServer.mem_supplier_warehouse_outbound_product,StoreServer.sys_warehouse_outbound_product_bo_sn_[0-9]+,StoreServer.thd_warehouse_outbound_product_bo_sn,StoreServer.sys_warehouse_outbound_upload_file_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_upload_file_record,StoreServer.mem_supplier_warehouse_outbound_upload_file_record'
   server-id: 5700-5799
   server-time-zone: Asia/Shanghai
@@ -74,33 +74,53 @@ transform:
   - source-table: 'StoreServer.mem_customer_amaz_order,StoreServer.mem_customer_amaz_order_[0-9]+,StoreServer.mem_customer_amaz_order_history'
     projection: "*, __table_name__ || '_' || id AS _pk_id"
     primary-keys: _pk_id
+    partition-keys: _pk_id
+    table-options: "mysql.partition.strategy=key,mysql.partition.count=16"
   - source-table: 'StoreServer.mem_customer_amaz_order_item,StoreServer.mem_customer_amaz_order_item_[0-9]+'
     projection: "*, __table_name__ || '_' || id AS _pk_id"
     primary-keys: _pk_id
+    partition-keys: _pk_id
+    table-options: "mysql.partition.strategy=key,mysql.partition.count=16"
   - source-table: StoreServer.sys_warehouse_outbound_([0-9]+|[0-9]+_history)
     projection: "*, 1 AS wh_type, __table_name__ || '_' || outbound_id AS _pk_id"
     primary-keys: _pk_id
+    partition-keys: _pk_id
+    table-options: "mysql.partition.strategy=key,mysql.partition.count=16"
   - source-table: StoreServer.mem_supplier_warehouse_outbound
     projection: "*, 2 AS wh_type, __table_name__ || '_' || outbound_id AS _pk_id"
     primary-keys: _pk_id
+    partition-keys: _pk_id
+    table-options: "mysql.partition.strategy=key,mysql.partition.count=16"
   - source-table: StoreServer.thd_warehouse_outbound
     projection: "*, 3 AS wh_type, __table_name__ || '_' || outbound_id AS _pk_id"
     primary-keys: _pk_id
+    partition-keys: _pk_id
+    table-options: "mysql.partition.strategy=key,mysql.partition.count=16"
   - source-table: 'StoreServer.sys_warehouse_outbound_tracking_[0-9]+,StoreServer.thd_warehouse_outbound_tracking,StoreServer.mem_supplier_warehouse_outbound_tracking'
     projection: "*, __table_name__ || '_' || outbound_id AS _pk_id"
     primary-keys: _pk_id,tracking_number,delete
+    partition-keys: _pk_id
+    table-options: "mysql.partition.strategy=key,mysql.partition.count=16"
   - source-table: 'StoreServer.sys_warehouse_outbound_sn_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record,StoreServer.mem_supplier_warehouse_outbound_sn_record_history'
     projection: "*, __table_name__ || '_' || id AS _pk_id"
     primary-keys: _pk_id
+    partition-keys: _pk_id
+    table-options: "mysql.partition.strategy=key,mysql.partition.count=16"
   - source-table: 'StoreServer.sys_warehouse_outbound_product_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_product,StoreServer.mem_supplier_warehouse_outbound_product'
     projection: "*, __table_name__ || '_' || outbound_id AS _pk_id"
     primary-keys: _pk_id,upc
+    partition-keys: _pk_id
+    table-options: "mysql.partition.strategy=key,mysql.partition.count=16"
   - source-table: 'StoreServer.sys_warehouse_outbound_product_bo_sn_[0-9]+,StoreServer.thd_warehouse_outbound_product_bo_sn'
     projection: "*, __table_name__ || '_' || outbound_id AS _pk_id"
     primary-keys: _pk_id,upc,bo_sn
+    partition-keys: _pk_id
+    table-options: "mysql.partition.strategy=key,mysql.partition.count=16"
   - source-table: 'StoreServer.sys_warehouse_outbound_upload_file_record_([0-9]+|[0-9]+_history),StoreServer.thd_warehouse_outbound_upload_file_record,StoreServer.mem_supplier_warehouse_outbound_upload_file_record'
     projection: "*, __table_name__ || '_' || id AS _pk_id"
     primary-keys: _pk_id
+    partition-keys: _pk_id
+    table-options: "mysql.partition.strategy=key,mysql.partition.count=16"
 
 pipeline:
   name: MySQL-Shards-To-MySQL-Partitioned-Table
