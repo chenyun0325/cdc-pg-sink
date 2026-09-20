@@ -1,0 +1,57 @@
+source:
+  type: mysql
+  name: OceanBase-Binlog-Source
+  hostname: 10.10.10.20
+  port: 2883
+  username: root@test#obdev
+  password: "CHANGE_ME_OB_PASSWORD"
+
+  # MySQL/OceanBase database.table regular expression.
+  # Replace with the real business databases and exclude system schemas.
+  tables: '(warehouse|order|inventory|config)\..*'
+
+  server-id: 5400-5599
+  scan.startup.mode: initial
+  scan.incremental.snapshot.enabled: true
+  scan.incremental.snapshot.chunk.size: 8096
+  scan.snapshot.fetch.size: 2048
+  scan.newly-added-table.enabled: true
+  # Enable only after confirming that the source connector/runtime supports it.
+  # scan.binlog.newly-added-table.enabled: true
+  schema-change.enabled: true
+  heartbeat.interval: 30s
+  connect.timeout: 30s
+  connect.max-retries: 10
+  jdbc.properties.useSSL: false
+
+sink:
+  type: postgres
+  name: PostgreSQL-AutoDDL-Sink
+  hostname: 10.20.10.50
+  port: 5432
+  database-name: cdc_target
+  username: flink_cdc
+  password: "CHANGE_ME_POSTGRES_PASSWORD"
+
+  # Default mapping: source database/schema -> PostgreSQL schema.
+  create-schema.enabled: true
+  schema-prefix: ''
+  default-schema: public
+  # To merge every source table into one schema, set schema-name instead.
+  # schema-name: public
+  server-time-zone: Asia/Shanghai
+
+  sink.buffer-flush.max-rows: 2000
+  sink.buffer-flush.interval: 2s
+  sink.max-retries: 3
+  statement-cache.max-size: 256
+
+  # Production-safe default: DROP COLUMN/TABLE/TRUNCATE fails the job.
+  dangerous-ddl.enabled: false
+  no-primary-key.action: fail
+
+pipeline:
+  name: OceanBase-To-PostgreSQL-Full-Database
+  parallelism: 8
+  local-time-zone: Asia/Shanghai
+  schema.change.behavior: evolve

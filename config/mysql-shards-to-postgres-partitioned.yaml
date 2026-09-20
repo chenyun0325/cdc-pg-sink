@@ -1,0 +1,67 @@
+source:
+  type: mysql
+  name: MySQL-Shards-Source
+  hostname: mysql.example.internal
+  port: 3306
+  username: flink_cdc
+  password: "CHANGE_ME"
+  tables: 'app_db.order_[0-9]+,app_db.order_history,app_db.outbound_[0-9]+,app_db.outbound_supplier,app_db.outbound_third'
+  server-id: 5400-5599
+  scan.startup.mode: initial
+  scan.incremental.snapshot.enabled: true
+  schema-change.enabled: true
+
+sink:
+  type: postgres
+  name: PostgreSQL-Shard-Merge-Sink
+  hostname: postgres.example.internal
+  port: 5432
+  database-name: cdc_target
+  username: flink_cdc
+  password: "CHANGE_ME"
+  create-schema.enabled: true
+  schema-name: public
+  partition.default-strategy: hash
+  partition.default-count: 16
+  sink.buffer-flush.max-rows: 2000
+  sink.buffer-flush.interval: 2s
+  sink.max-retries: 3
+  dangerous-ddl.enabled: false
+
+route:
+  - source-table: app_db.order_[0-9]+,app_db.order_history
+    sink-table: target_db.order_m
+    description: Merge order shards into one HASH-partitioned table
+  - source-table: app_db.outbound_[0-9]+,app_db.outbound_supplier,app_db.outbound_third
+    sink-table: target_db.outbound_m
+    description: Merge outbound tables into one LIST-partitioned table
+
+transform:
+  - source-table: app_db.order_[0-9]+,app_db.order_history
+    projection: "*, __table_name__ || '_' || id AS _pk_id"
+    primary-keys: _pk_id
+    partition-keys: _pk_id
+    table-options: "postgres.partition.strategy=hash,postgres.partition.count=32"
+
+  # Every source rule routed to target_db.outbound_m carries identical partition metadata.
+  - source-table: app_db.outbound_[0-9]+
+    projection: "*, 1 AS wh_type, __table_name__ || '_' || outbound_id AS _pk_id"
+    primary-keys: wh_type,_pk_id
+    partition-keys: wh_type
+    table-options: "postgres.partition.strategy=list,postgres.partition.list.internal=1,postgres.partition.list.supplier=2,postgres.partition.list.third_party=3,postgres.partition.default=true"
+  - source-table: app_db.outbound_supplier
+    projection: "*, 2 AS wh_type, __table_name__ || '_' || outbound_id AS _pk_id"
+    primary-keys: wh_type,_pk_id
+    partition-keys: wh_type
+    table-options: "postgres.partition.strategy=list,postgres.partition.list.internal=1,postgres.partition.list.supplier=2,postgres.partition.list.third_party=3,postgres.partition.default=true"
+  - source-table: app_db.outbound_third
+    projection: "*, 3 AS wh_type, __table_name__ || '_' || outbound_id AS _pk_id"
+    primary-keys: wh_type,_pk_id
+    partition-keys: wh_type
+    table-options: "postgres.partition.strategy=list,postgres.partition.list.internal=1,postgres.partition.list.supplier=2,postgres.partition.list.third_party=3,postgres.partition.default=true"
+
+pipeline:
+  name: MySQL-Shards-To-PostgreSQL-Partitioned
+  parallelism: 4
+  local-time-zone: Asia/Shanghai
+  schema.change.behavior: TRY_EVOLVE
